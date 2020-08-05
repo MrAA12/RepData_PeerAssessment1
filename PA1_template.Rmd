@@ -1,25 +1,51 @@
----
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
----
 
 
-## Loading and preprocessing the data
+```{r , echo = TRUE}
+
+library(ggplot2)
+project <- read.csv("activity.csv")
+project$date <- as.POSIXct(project$date, "%Y-%m-%d")
+weekday <- weekdays(project$date)
+activity <- cbind(project,weekday)
+
+activity_total_steps <- with(project, aggregate(steps, by = list(date), FUN = sum, na.rm = TRUE))
+names(activity_total_steps) <- c("date","steps")
+hist(activity_total_steps$steps, main = "Total number of steps taken per day", xlab = "Total Steps taken per day", col = "orange", ylim = c(0,20), breaks = seq(0,25000, by = 2500))
+mean(activity_total_steps$steps)
+median(activity_total_steps$steps)
+
+
+average_daily_activity <- aggregate(project$steps, by = list(project$interval), FUN = mean, na.rm = TRUE)
+names(average_daily_activity) <- c("interval","mean")
+plot(average_daily_activity$interval, average_daily_activity$mean, type = "l" , col = "orange", lwd = 2, xlab = "Interval", ylab = "Average number of steps", main = "Average number of steps per intervals")
+
+average_daily_activity[which.max(average_daily_activity$mean),]$interval 
 
 
 
-## What is mean total number of steps taken per day?
+sum(is.na(project))
+
+impute_steps <- average_daily_activity$mean[match(project$interval,average_daily_activity$interval)]
+
+activity_impute <- transform(project, steps = ifelse(is.na(project$steps), yes = impute_steps, no = project$steps))
+total_steps_impute <- aggregate(steps ~ date, activity_impute, sum)
+names(total_steps_impute) <- c("datesteps", "daily_steps")
+
+hist(total_steps_impute$daily_steps, col = "orange", xlab = "Total Steps per day", ylim = c(0,30), main = "Total number of steps taken each day", breaks = seq(0,25000,by=2500))
+
+mean(total_steps_impute$daily_steps)
+median(total_steps_impute$daily_steps)
 
 
+project$date <- as.Date(strptime(project$date, format = "%Y-%m-%d"))
+project$datetype <- sapply(project$date,function(x) {
+if(weekdays(x) == "Saturday" | weekdays(x) == "Sunday")
+{y <- "Weekend"} else
+{y <- "Weekday"}
+y
+})
 
-## What is the average daily activity pattern?
-
-
-
-## Imputing missing values
-
-
-
-## Are there differences in activity patterns between weekdays and weekends?
+activity_by_date <- aggregate(steps ~ interval + datetype, project, mean, na.rm = TRUE)
+plot <- ggplot(activity_by_date, aes(x = interval, y = steps, color = datetype)) + geom_line() + labs(title = "Average daily steps by type of data", x = "Inteval", y = "Average number of steps") + facet_wrap(~ datetype, ncol = 1, nrow = 2)
+print(plot)
+```
